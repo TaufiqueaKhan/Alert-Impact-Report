@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+ <html lang="en">
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Alert Impact Report Generator</title>
+ <style>
+ * { box-sizing: border-box; }
+ body { margin: 0; background: #f5f7fa; color: #16202e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 16px; }
+ main { max-width: 480px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+ h1 { font-size: 1.3rem; margin: 0 0 16px; text-align: center; }
+ h2 { font-size: 1rem; margin: 20px 0 8px; color: #344054; border-bottom: 1px solid #eaecf0; padding-bottom: 4px; }
+
+ /* Hidden raw checkboxes */
+ .pick { position: absolute; opacity: 0; width: 1px; height: 1px; }
+
+ /* Styled colorful rows */
+ .opt { display: flex; align-items: center; gap: 14px; width: 100%; background: #fff; border: 2px solid #c9d1dc; border-radius: 14px; padding: 15px; margin-bottom: 10px; font-size: 1.02rem; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+ .box { flex: none; width: 24px; height: 24px; border: 2px solid #c9d1dc; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; }
+
+ /* Active states changing borders and colors dynamically */
+ .pick:checked + .opt { border-color: var(--c); background: #ffff; }
+ .pick:checked + .opt .box { background: var(--c); border-color: var(--c); }
+ .pick:checked + .opt .box::after { content: "\2713"; }
+
+ textarea { width: 100%; padding: 12px; border: 2px solid #d0d5dd; border-radius: 8px; font-family: inherit; font-size: 0.95rem; background: #fff; color: #16202e; }
+ #notes { min-height: 80px; margin-bottom: 10px; }
+ #prev { min-height: 220px; background: #f9fafb; border-color: #98a2b3; font-family: monospace; font-size: 0.9rem; }
+
+ .btn { width: 100%; padding: 14px; background: #16202e; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 12px; -webkit-appearance: none; }
+ .btn:active { background: #344054; }
+ #msg { text-align: center; color: #475467; font-size: 0.9rem; margin-top: 8px; font-weight: 500; }
+ </style>
+ </head>
+ <body>
+
+<main>
+ <h1>Alert Impact Report</h1>
+
+ <h2>1. Select Impact</h2>
+ <input class="pick" type="radio" name="impact" id="i0" value="Full Application Outage"><label class="opt" for="i0" style="--c:#d92d20"><span class="box"></span>Full Application Outage</label>
+ <input class="pick" type="radio" name="impact" id="i1" value="Partial Service Failure / Degraded User Experience"><label class="opt" for="i1" style="--c:#e08a00"><span class="box"></span>Partial Service Failure</label>
+ <input class="pick" type="radio" name="impact" id="i2" value="No Business Impact"><label class="opt" for="i2" style="--c:#1a9b55"><span class="box"></span>No Business Impact</label>
+ <input class="pick" type="radio" name="impact" id="i3" value="Under Investigation"><label class="opt" for="i3" style="--c:#2563eb"><span class="box"></span>Under Investigation</label>
+
+ <h2>2. Incident Activity</h2>
+ <input class="pick" type="checkbox" id="a0" value="Incident team engaged"><label class="opt" for="a0" style="--c:#1a9b55"><span class="box"></span>Incident team engaged</label>
+ <input class="pick" type="checkbox" id="a1" value="Escalated to management"><label class="opt" for="a1" style="--c:#1a9b55"><span class="box"></span>Escalated to management</label>
+ <input class="pick" type="checkbox" id="a2" value="Vendor / third party contacted"><label class="opt" for="a2" style="--c:#1a9b55"><span class="box"></span>Vendor / third party contacted</label>
+ <input class="pick" type="checkbox" id="a3" value="Workaround applied"><label class="opt" for="a3" style="--c:#1a9b55"><span class="box"></span>Workaround applied</label>
+ <input class="pick" type="checkbox" id="a4" value="Fix deployed"><label class="opt" for="a4" style="--c:#1a9b55"><span class="box"></span>Fix deployed</label>
+ <input class="pick" type="checkbox" id="a5" value="Users informed"><label class="opt" for="a5" style="--c:#1a9b55"><span class="box"></span>Users informed</label>
+ <input class="pick" type="checkbox" id="a6" value="Incident resolved"><label class="opt" for="a6" style="--c:#1a9b55"><span class="box"></span>Incident resolved</label>
+
+ <h2>3. Additional Notes (Optional)</h2>
+ <textarea id="notes" placeholder="Type updates here..."></textarea>
+
+ <h2>4. Final Formatted Report</h2>
+ <textarea id="prev" placeholder="Your report will generate here..." onclick="this.select(); this.setSelectionRange(0, 99999);"></textarea>
+
+ <button type="button" class="btn" id="actionBtn">Highlight & Copy Report</button>
+ <div id="msg">Select options above to start.</div>
+ </main>
+
+<script>
+ (function(){
+ var prev = document.getElementById("prev");
+ var notes = document.getElementById("notes");
+ var actionBtn = document.getElementById("actionBtn");
+ var msg = document.getElementById("msg");
+
+ function getTimestamp() {
+ var d = new Date();
+ var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+ var min = d.getMinutes() < 10 ? "0" + d.getMinutes() : d.getMinutes();
+ var ampm = d.getHours() >= 12 ? "PM" : "AM";
+ var hr = d.getHours() % 12;
+ hr = hr ? hr : 12;
+ var hrStr = hr < 10 ? "0" + hr : hr;
+ return d.getDate() + " " + months[d.getMonth()] + " " + d.getFullYear() + ", " + hrStr + ":" + min + " " + ampm;
+ }
+
+ function generateText() {
+ var txt = "Alert Impact Report\n" + getTimestamp() + "\n\nImpact:\n";
+
+ // Custom color output mapping for each status type
+ txt += (document.getElementById("i0").checked ? "🟥 " : "⬜ ") + "Full Application Outage\n";
+ txt += (document.getElementById("i1").checked ? "🟧 " : "⬜ ") + "Partial Service Failure / Degraded User Experience\n";
+ txt += (document.getElementById("i2").checked ? "🟩 " : "⬜ ") + "No Business Impact\n";
+ txt += (document.getElementById("i3").checked ? "🟦 " : "⬜ ") + "Under Investigation\n\nActivity:\n";
+
+ txt += (document.getElementById("a0").checked ? "✅ " : "⬜ ") + "Incident team engaged\n";
+ txt += (document.getElementById("a1").checked ? "✅ " : "⬜ ") + "Escalated to management\n";
+ txt += (document.getElementById("a2").checked ? "✅ " : "⬜ ") + "Vendor / third party contacted\n";
+ txt += (document.getElementById("a3").checked ? "✅ " : "⬜ ") + "Workaround applied\n";
+ txt += (document.getElementById("a4").checked ? "✅ " : "⬜ ") + "Fix deployed\n";
+ txt += (document.getElementById("a5").checked ? "✅ " : "⬜ ") + "Users informed\n";
+ txt += (document.getElementById("a6").checked ? "✅ " : "⬜ ") + "Incident resolved";
+
+ var customNotes = notes.value.trim();
+ if(customNotes) {
+ txt += "\n\nNotes: " + customNotes;
+ }
+
+ prev.value = txt;
+ }
+
+ document.addEventListener("change", generateText);
+ notes.addEventListener("input", generateText);
+
+ generateText();
+
+ actionBtn.onclick = function() {
+ generateText();
+ prev.focus();
+ prev.select();
+ prev.setSelectionRange(0, 99999);
+
+ try {
+ var copied = document.execCommand('copy');
+ if (copied) {
+ msg.innerHTML = "<span style='color:#1a9b55;'>✓ Copied to clipboard!</span>";
+ } else {
+ throw "fallback";
+ }
+ } catch(e) {
+ msg.innerHTML = "<span style='color:#2563eb;'>ℹ Text highlighted! Tap 'Copy' on your screen.</span>";
+ }
+ };
+ })();
+ </script>
+
+</body>
+ </html>
